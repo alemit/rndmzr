@@ -14,9 +14,8 @@ module.exports = {
   parserOptions: {
     parser: 'babel-eslint'
   },
-
   rules: {
-    'no-console': process.env.NODE_ENV === 'production' ? 'warn' : 'off',
+    'no-console': 'off', // Allow console logs in all environments for extension debugging
     'no-debugger': process.env.NODE_ENV === 'production' ? 'warn' : 'off'
   },
 

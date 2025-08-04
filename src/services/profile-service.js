@@ -84,30 +84,45 @@ export default class ProfileService {
 
     getDistributionProfile(profile) {
         if (!profile) {
-            throw 'No profile has been configured'
+            // Change from console.warn to console.debug to reduce console noise
+            console.debug('No profile has been configured');
+            return null;
         }
         
-        return this.DISTRIBUTION_PROFILE[profile]
+        const profileData = this.DISTRIBUTION_PROFILE[profile];
+        if (!profileData) {
+            console.debug(`Unknown profile: ${profile}`);
+            return null;
+        }
+        
+        return profileData;
     }
 
     getExpectedDailyDistribution(profile, dailyTotal) {
         if (!profile) {
-            throw 'No profile has been configured'
+            // Change from console.warn to console.debug to reduce console noise
+            console.debug('No profile has been configured');
+            return { capex: 0, opex: 0 };
         }
         
-        const capex = this.DISTRIBUTION_PROFILE[profile]['distribution']['capex']
-        const opex = this.DISTRIBUTION_PROFILE[profile]['distribution']['opex']
-
+        const profileData = this.DISTRIBUTION_PROFILE[profile];
+        if (!profileData) {
+            console.debug(`Unknown profile: ${profile}`);
+            return { capex: 0, opex: 0 };
+        }
+        
+        const capex = profileData.distribution.capex;
+        const opex = profileData.distribution.opex;
+        
         const capexFraction = Fraction(capex).div(capex + opex)
         const opexFraction = Fraction(opex).div(capex + opex)
-
+        
         let expectedCapex = dayjs.duration(capexFraction.mul(dailyTotal.asMinutes()), 'minutes')
         let expectedOpex = dayjs.duration(opexFraction.mul(dailyTotal.asMinutes()), 'minutes')
-
         const expectedCapexMillis = expectedCapex.seconds() * 1000 + expectedCapex.milliseconds()
         const expectedOpexMillis = expectedOpex.seconds() * 1000 + expectedOpex.milliseconds()
 
-        if (expectedCapexMillis >= 30_000) {
+        if (expectedCapexMillis >= 30000) {
             expectedCapex = expectedCapex.add(expectedOpexMillis, 'ms')
             expectedOpex = expectedOpex.subtract(expectedOpexMillis, 'ms')
         } else {

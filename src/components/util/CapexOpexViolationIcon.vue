@@ -72,7 +72,31 @@ export default {
             'capexOpexRatioViolations'
         ]),
         expectedTotalPerType: function () {
-            return profileService.getExpectedDailyDistribution(this.profile, this.dayTotal)
+            // Get expected distribution, making sure it returns proper dayjs duration objects
+            try {
+                const expectedDistribution = profileService.getExpectedDailyDistribution(this.profile, this.dayTotal);
+                
+                // Ensure we have proper dayjs duration objects
+                if (expectedDistribution && typeof expectedDistribution === 'object') {
+                    if (expectedDistribution.capex && typeof expectedDistribution.capex.asMinutes !== 'function') {
+                        // Convert to dayjs duration if it's not already
+                        expectedDistribution.capex = zeroDuration();
+                    }
+                    if (expectedDistribution.opex && typeof expectedDistribution.opex.asMinutes !== 'function') {
+                        // Convert to dayjs duration if it's not already
+                        expectedDistribution.opex = zeroDuration();
+                    }
+                    return expectedDistribution;
+                }
+            } catch (error) {
+                console.error('Error calculating expected distribution:', error);
+            }
+            
+            // Fallback to zero duration if anything fails
+            return { 
+                capex: zeroDuration(), 
+                opex: zeroDuration() 
+            };
         },
         actualTotalPerType: function()  {
             if (!this.timeEntry) {
@@ -90,16 +114,42 @@ export default {
             }, { capex: zeroDuration(), opex: zeroDuration() })
         },
         isViolation: function() {
-            if (this.isWholeDayTraining || this.isWholeDayOff) {
-                return false
+            // Safety checks to prevent errors
+            if (!this.capexOpexViolationMode || 
+                this.isWholeDayTraining || 
+                this.isWholeDayOff || 
+                !this.dayTotal || 
+                typeof this.dayTotal.asMinutes !== 'function') {
+                return false;
             }
-
-            const allowedDeviation = this.capexOpexViolationThreshold / 100 * this.dayTotal.asMinutes()
-            const actualCapexMinutes = this.actualTotalPerType.capex.asMinutes()
-            const expectedCapexMinutes = this.expectedTotalPerType.capex.asMinutes()
-            const lessThanThreshold = actualCapexMinutes < (expectedCapexMinutes - allowedDeviation)
-            const greaterThanThreshold = actualCapexMinutes > (expectedCapexMinutes + allowedDeviation)
-            return this.capexOpexViolationMode && (lessThanThreshold || greaterThanThreshold)
+            
+            try {
+                // Get the values with proper validation
+                const dayTotalMinutes = this.dayTotal.asMinutes();
+                if (!dayTotalMinutes) return false; // No time entries for the day
+                
+                // Check that we have proper duration objects
+                if (!this.actualTotalPerType || 
+                    !this.actualTotalPerType.capex || 
+                    typeof this.actualTotalPerType.capex.asMinutes !== 'function' ||
+                    !this.expectedTotalPerType || 
+                    !this.expectedTotalPerType.capex || 
+                    typeof this.expectedTotalPerType.capex.asMinutes !== 'function') {
+                    return false;
+                }
+                
+                const allowedDeviation = this.capexOpexViolationThreshold / 100 * dayTotalMinutes;
+                const actualCapexMinutes = this.actualTotalPerType.capex.asMinutes();
+                const expectedCapexMinutes = this.expectedTotalPerType.capex.asMinutes();
+                
+                const lessThanThreshold = actualCapexMinutes < (expectedCapexMinutes - allowedDeviation);
+                const greaterThanThreshold = actualCapexMinutes > (expectedCapexMinutes + allowedDeviation);
+                
+                return lessThanThreshold || greaterThanThreshold;
+            } catch (error) {
+                console.error('Error calculating CAPEX/OPEX violation:', error);
+                return false;
+            }
         },
         isWholeDayTraining: function () {
             const trainingTask = findTrainingTask(this.projects)

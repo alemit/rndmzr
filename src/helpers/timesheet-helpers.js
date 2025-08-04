@@ -4,10 +4,19 @@ import { zeroDuration } from '@/helpers/time-helpers'
 const DAY_OFF_TASK = 'Absence - Day off'
 const TRAINING_TASK = 'Admin - Internal Paysafe Training'
 
-export const isProfileTask = (task, distributionProfile) =>
-    !!distributionProfile.tasks
-        .filter(x => task.name.includes(x))
-        .length
+export const isProfileTask = (task, distributionProfile) => {
+    // Handle case where distributionProfile is undefined or doesn't have tasks
+    if (!distributionProfile || !distributionProfile.tasks || !Array.isArray(distributionProfile.tasks)) {
+        return false;
+    }
+    
+    // Handle case where task is undefined or doesn't have a name
+    if (!task || !task.name) {
+        return false;
+    }
+    
+    return distributionProfile.tasks.some(profileTask => task.name.includes(profileTask));
+}
 
 export const getDayEntries = (dayIndex, timeEntries) => {
     const dayEntries = []
@@ -38,15 +47,29 @@ export const convertToTimesheet = (clockifyEntries, weekStart) => clockifyEntrie
     []
 )
 
-export const findDayOffTask = (projects) => projects
-    .flatMap(project => project.tasks)
-    .filter(task => task.name.includes(DAY_OFF_TASK))
-    .shift()
+export const findDayOffTask = (projects) => {
+    if (!projects || !Array.isArray(projects)) {
+        return null;
+    }
+    
+    const dayOffTasks = projects
+        .flatMap(project => project.tasks || [])
+        .filter(task => task && task.name && task.name.includes(DAY_OFF_TASK));
+    
+    return dayOffTasks.length > 0 ? dayOffTasks[0] : null;
+}
 
-export const findTrainingTask = (projects) => projects
-    .flatMap(project => project.tasks)
-    .filter(task => task.name.includes(TRAINING_TASK))
-    .shift()
+export const findTrainingTask = (projects) => {
+    if (!projects || !Array.isArray(projects)) {
+        return null;
+    }
+    
+    const trainingTasks = projects
+        .flatMap(project => project.tasks || [])
+        .filter(task => task && task.name && task.name.includes(TRAINING_TASK));
+    
+    return trainingTasks.length > 0 ? trainingTasks[0] : null;
+}
 
 /* eslint-disable no-unused-vars */
 export const getAllTimesheetTaskIds = (timeEntries) =>

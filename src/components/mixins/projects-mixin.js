@@ -4,6 +4,11 @@ import { mapFields } from 'vuex-map-fields'
 import { isProfileTask, findDayOffTask, getAllTimesheetTaskIds } from '@/helpers/timesheet-helpers'
 
 export default {
+    data() {
+        return {
+            distributionProfile: null
+        }
+    },
     computed: {
         ...mapFields([
             'projects',
@@ -12,24 +17,44 @@ export default {
             'timeEntries'
         ]),
         workspace: function () {
-            return this.userInfo.activeWorkspace
+            return this.userInfo?.activeWorkspace || null
         },
         projectsCount: function () {
-            return this.projects.length
+            return this.projects?.length || 0
         },
         profileProjects: function () {
+            if (!this.projects || !this.distributionProfile) {
+                return this.projects || []
+            }
+            
             return this.projects.map(project => ({
                 ...project,
-                tasks: project.tasks.filter(task => isProfileTask(task, this.distributionProfile))
+                tasks: project.tasks?.filter(task => isProfileTask(task, this.distributionProfile)) || []
             }))
         },
-        profileProjectsPlusTimeOff: function () { // TODO: Come up with a better approach
-            const dayOffTask = findDayOffTask(this.projects)
-            return this.projects.map(project => ({
-                ...project,
-                tasks: project.tasks.filter(task => isProfileTask(task, this.distributionProfile) ||
-                                                    task.id === dayOffTask.id)
-            }))
+        profileProjectsPlusTimeOff: function () {
+            // Defensive coding to prevent TypeError if projects or distributionProfile is undefined
+            if (!this.projects || !Array.isArray(this.projects)) {
+                return []
+            }
+            
+            const dayOffTask = findDayOffTask(this.projects) || { id: null }
+            
+            return this.projects.map(project => {
+                // Make sure project.tasks exists and is an array
+                if (!project.tasks || !Array.isArray(project.tasks)) {
+                    return { ...project, tasks: [] }
+                }
+                
+                return {
+                    ...project,
+                    tasks: project.tasks.filter(task => 
+                        // If distributionProfile is undefined, just check for day off task
+                        (this.distributionProfile && isProfileTask(task, this.distributionProfile)) ||
+                        (dayOffTask && task.id === dayOffTask.id)
+                    )
+                }
+            })
         },
         projectIds: function () {
             return this.projects.map(project => project.id)
@@ -40,6 +65,34 @@ export default {
         allTaskIds: function () {
             return this.projects.flatMap(project => project.tasks).map(task => task.id)
         }
+    },
+    created() {
+        // Try to initialize the distribution profile from the current profile
+        try {
+            if (this.profile) {
+                this.distributionProfile = this.$profileService?.getDistributionProfile(this.profile);
+                
+                if (!this.distributionProfile) {
+                    console.warn('Unable to get distribution profile for:', this.profile);
+                }
+            }
+        } catch (error) {
+            console.error('Error initializing distribution profile:', error);
+        }
+        
+        // Set up a watcher to update distributionProfile when profile changes
+        this.$watch('profile', (newProfile) => {
+            try {
+                if (newProfile) {
+                    this.distributionProfile = this.$profileService?.getDistributionProfile(newProfile);
+                } else {
+                    this.distributionProfile = null;
+                }
+            } catch (error) {
+                console.error('Error updating distribution profile:', error);
+                this.distributionProfile = null;
+            }
+        });
     },
     methods: {
         ...mapMutations([
