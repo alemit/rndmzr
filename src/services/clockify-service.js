@@ -82,10 +82,27 @@ export default class ClockifyService {
                 return
             }
             
-            const approvalRequest = { weekTime: weekStart }
-            await this.httpClient.post(`https://global.api.clockify.me/workspaces/${workspace}/users/${userId}/approval-requests/`, approvalRequest)
+            // Format the date properly - the API expects ISO format
+            const periodStart = weekStart.format()
+            console.debug(`Submitting approval request for period starting ${periodStart}`)
+            
+            // Use periodStart instead of weekTime as required by the API
+            const approvalRequest = { 
+                periodStart: periodStart 
+            }
+            
+            const response = await this.httpClient.post(
+                `https://global.api.clockify.me/workspaces/${workspace}/users/${userId}/approval-requests/`, 
+                approvalRequest
+            )
+            console.debug('Approval request submitted successfully', response.data)
+            return response.data
         } catch (error) {
             console.error('Error submitting approval request:', error)
+            if (error.response && error.response.data) {
+                console.error('API response:', error.response.data)
+            }
+            throw error
         }
     }
 
