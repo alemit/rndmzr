@@ -1,5 +1,6 @@
 import dayjs from '@/helpers/dayjs'
 import Fraction from 'fraction.js'
+import { zeroDuration } from '@/helpers/time-helpers'
 
 export default class ProfileService {
 
@@ -47,8 +48,7 @@ export default class ProfileService {
         },
         tasks: [
             // CAPEX
-            'Execution - Business requirement, Software, Database and Technical Design (CAPEX)',
-            'Execution - Technical Requirements (CAPEX)',
+            'Execution - Business requirement, Software, Database and Technical Design (CAPEX)',            'Execution - Technical Requirements (CAPEX)',
             'Execution - Daily Standup, sprint planning, demos, and retrospective (CAPEX)',
             'Execution - Software coding, code review and approval (CAPEX)',
             // OPEX
@@ -75,64 +75,87 @@ export default class ProfileService {
         ]
     }
 
-    DISTRIBUTION_PROFILE = {
-        'engineering-manager': this.ENGINEERING_MANAGER,
-        'agile-delivery-lead': this.AGILE_DELIVERY_LEAD,
-        'architect': this.ARCHITECT,
-        'product-owner': this.PRODUCT_OWNER
+    constructor() {
+        // Initialize the DISTRIBUTION_PROFILE in the constructor to avoid issues with 'this'
+        this.DISTRIBUTION_PROFILE = {
+            'engineering-manager': this.ENGINEERING_MANAGER,
+            'agile-delivery-lead': this.AGILE_DELIVERY_LEAD,
+            'architect': this.ARCHITECT,
+            'product-owner': this.PRODUCT_OWNER
+        };
     }
-
+    
     getDistributionProfile(profile) {
         if (!profile) {
-            // Change from console.warn to console.debug to reduce console noise
-            console.debug('No profile has been configured');
-            return null;
+            // Don't show an error for this common situation during startup
+            // Just log at debug level to avoid console noise
+            console.debug('No profile has been configured yet');
+            
+            // Default to engineering manager profile instead of null
+            // This prevents errors downstream when code expects a valid profile
+            return this.ENGINEERING_MANAGER;
         }
         
         const profileData = this.DISTRIBUTION_PROFILE[profile];
         if (!profileData) {
-            console.debug(`Unknown profile: ${profile}`);
-            return null;
+            console.debug(`Unknown profile: ${profile}, defaulting to Engineering Manager`);
+            return this.ENGINEERING_MANAGER;
         }
-        
-        return profileData;
+          return profileData;
     }
-
-    getExpectedDailyDistribution(profile, dailyTotal) {
-        if (!profile) {
-            // Change from console.warn to console.debug to reduce console noise
-            console.debug('No profile has been configured');
-            return { capex: 0, opex: 0 };
-        }
-        
-        const profileData = this.DISTRIBUTION_PROFILE[profile];
-        if (!profileData) {
-            console.debug(`Unknown profile: ${profile}`);
-            return { capex: 0, opex: 0 };
-        }
-        
-        const capex = profileData.distribution.capex;
-        const opex = profileData.distribution.opex;
-        
-        const capexFraction = Fraction(capex).div(capex + opex)
-        const opexFraction = Fraction(opex).div(capex + opex)
-        
-        let expectedCapex = dayjs.duration(capexFraction.mul(dailyTotal.asMinutes()), 'minutes')
-        let expectedOpex = dayjs.duration(opexFraction.mul(dailyTotal.asMinutes()), 'minutes')
-        const expectedCapexMillis = expectedCapex.seconds() * 1000 + expectedCapex.milliseconds()
-        const expectedOpexMillis = expectedOpex.seconds() * 1000 + expectedOpex.milliseconds()
-
-        if (expectedCapexMillis >= 30000) {
-            expectedCapex = expectedCapex.add(expectedOpexMillis, 'ms')
-            expectedOpex = expectedOpex.subtract(expectedOpexMillis, 'ms')
-        } else {
-            expectedCapex = expectedCapex.subtract(expectedCapexMillis, 'ms')
-            expectedOpex = expectedOpex.add(expectedCapexMillis, 'ms')
-        }
-
-        return {
-            capex: expectedCapex,
-            opex: expectedOpex
+      getExpectedDailyDistribution(profile, dailyTotal) {
+        try {
+            // If we don't have a valid dailyTotal, return zero durations
+            if (!dailyTotal || typeof dailyTotal.asMinutes !== 'function') {
+                console.debug('Invalid dailyTotal for distribution calculation');
+                return { 
+                    capex: zeroDuration(), 
+                    opex: zeroDuration() 
+                };
+            }
+            
+            // Get profile data, defaulting to engineering manager if needed
+            let profileData;
+            if (!profile) {
+                console.debug('No profile configured, using default Engineering Manager profile');
+                profileData = this.ENGINEERING_MANAGER;
+            } else {
+                profileData = this.DISTRIBUTION_PROFILE[profile];
+                if (!profileData) {
+                    console.debug(`Unknown profile: ${profile}, using Engineering Manager`);
+                    profileData = this.ENGINEERING_MANAGER;
+                }
+            }
+            
+            const capex = profileData.distribution.capex;
+            const opex = profileData.distribution.opex;
+            
+            const capexFraction = Fraction(capex).div(capex + opex);
+            const opexFraction = Fraction(opex).div(capex + opex);
+            
+            let expectedCapex = dayjs.duration(capexFraction.mul(dailyTotal.asMinutes()), 'minutes');
+            let expectedOpex = dayjs.duration(opexFraction.mul(dailyTotal.asMinutes()), 'minutes');
+            const expectedCapexMillis = expectedCapex.seconds() * 1000 + expectedCapex.milliseconds();
+            const expectedOpexMillis = expectedOpex.seconds() * 1000 + expectedOpex.milliseconds();
+    
+            if (expectedCapexMillis >= 30000) {
+                expectedCapex = expectedCapex.add(expectedOpexMillis, 'ms');
+                expectedOpex = expectedOpex.subtract(expectedOpexMillis, 'ms');
+            } else {
+                expectedCapex = expectedCapex.subtract(expectedCapexMillis, 'ms');
+                expectedOpex = expectedOpex.add(expectedCapexMillis, 'ms');
+            }
+    
+            return {
+                capex: expectedCapex,
+                opex: expectedOpex
+            };
+        } catch (error) {
+            console.error('Error calculating expected distribution:', error);
+            return {
+                capex: zeroDuration(),
+                opex: zeroDuration()
+            };
         }
     }
 }

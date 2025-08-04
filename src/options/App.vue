@@ -219,34 +219,100 @@ export default {
         { id: 'product-owner', label: 'Product Owner' }
       ]
     }
+  },  async created () {
+    // Add a small delay to ensure the store is properly initialized
+    setTimeout(() => {
+      console.log('Initializing options with values from store:', {
+        profile: this.profile,
+        apiKey: this.apiKey ? 'exists' : 'not set'
+      });
+      
+      this.profileFieldValue = this.profile || '';
+      this.apiKeyValue = this.apiKey || '';
+      this.softSubmitValue = this.softSubmit || false;
+      this.overrideModeValue = this.overrideMode || false;
+      this.capexOpexViolationModeValue = this.capexOpexViolationMode || false;
+      this.capexOpexViolationThresholdValue = this.capexOpexViolationThreshold || 5;
+      this.reminderValue = this.reminder || false;
+      this.reminderDaysValue = Array.isArray(this.reminderDays) ? this.reminderDays : [];
+      
+      // Handle reminderTime carefully - it might be undefined or invalid
+      try {
+        if (this.reminderTime) {
+          this.reminderTimeValue = new Date(this.reminderTime);
+          if (isNaN(this.reminderTimeValue.getTime())) {
+            throw new Error('Invalid date');
+          }
+        } else {
+          // Default to 7 AM if not set
+          this.reminderTimeValue = new Date();
+          this.reminderTimeValue.setHours(7, 0, 0, 0);
+        }
+      } catch (e) {
+        console.warn('Error setting reminderTime, using default:', e);
+        // Default to 7 AM
+        this.reminderTimeValue = new Date();
+        this.reminderTimeValue.setHours(7, 0, 0, 0);
+      }
+      
+      console.log('Options initialized with:', {
+        profileFieldValue: this.profileFieldValue,
+        apiKeyValue: this.apiKeyValue ? 'exists' : 'not set'
+      });
+    }, 100);
   },
-  async created () {
-    this.profileFieldValue = this.profile
-    this.apiKeyValue = this.apiKey
-    this.softSubmitValue = this.softSubmit
-    this.overrideModeValue = this.overrideMode
-    this.capexOpexViolationModeValue = this.capexOpexViolationMode
-    this.capexOpexViolationThresholdValue = this.capexOpexViolationThreshold
-    this.reminderValue = this.reminder
-    this.reminderDaysValue = this.reminderDays
-    this.reminderTimeValue = new Date(this.reminderTime)
-  },
-  methods: {
-    async saveSettings() {
-      this.profile = this.profileFieldValue
-      this.apiKey = this.apiKeyValue
-      this.softSubmit = this.softSubmitValue
-      this.overrideMode = this.overrideModeValue
-      this.capexOpexViolationMode = this.capexOpexViolationModeValue
-      this.capexOpexViolationThreshold = parseInt(this.capexOpexViolationThresholdValue)
-      this.reminder = this.reminderValue
-      this.reminderDays = this.reminderDaysValue
-      this.reminderTime = this.reminderTimeValue.toISOString()
+  methods: {    async saveSettings() {
+      console.log('Saving settings:', {
+        profile: this.profileFieldValue,
+        apiKey: this.apiKeyValue ? 'exists' : 'not set'
+      });
+      
+      // Commit changes individually to ensure each triggers the store subscription
+      this.$store.commit('updateField', { path: 'profile', value: this.profileFieldValue });
+      this.$store.commit('updateField', { path: 'apiKey', value: this.apiKeyValue });
+      this.$store.commit('updateField', { path: 'softSubmit', value: this.softSubmitValue });
+      this.$store.commit('updateField', { path: 'overrideMode', value: this.overrideModeValue });
+      this.$store.commit('updateField', { path: 'capexOpexViolationMode', value: this.capexOpexViolationModeValue });
+      this.$store.commit('updateField', { path: 'capexOpexViolationThreshold', value: parseInt(this.capexOpexViolationThresholdValue) });
+      this.$store.commit('updateField', { path: 'reminder', value: this.reminderValue });
+      this.$store.commit('updateField', { path: 'reminderDays', value: this.reminderDaysValue });
+      
+      try {
+        const isoTime = this.reminderTimeValue.toISOString();
+        this.$store.commit('updateField', { path: 'reminderTime', value: isoTime });
+      } catch (e) {
+        console.error('Error converting reminderTime to ISO string:', e);
+        // Use a default time
+        this.$store.commit('updateField', { path: 'reminderTime', value: new Date().toISOString() });
+      }
+      
+      // Also save to session storage directly as a backup
+      try {
+        sessionStorage.setItem('clockify_api_key', this.apiKeyValue);
+        sessionStorage.setItem('profile', this.profileFieldValue);
+        console.log('Saved critical values to session storage');
+      } catch (e) {
+        console.error('Failed to save to session storage:', e);
+      }
+      
+      // Show success notification
       this.$buefy.toast.open({
         message: 'Settings saved',
         type: this.darkMode ? 'is-light' : 'is-dark',
-        queue: false
-      })
+        queue: false,
+        duration: 3000
+      });
+      
+      // Close the options page after saving if we're in a popup
+      if (window.opener || window.close) {
+        setTimeout(() => {
+          try {
+            window.close();
+          } catch (e) {
+            console.debug('Could not close window:', e);
+          }
+        }, 1500);
+      }
     }
   }
 }
