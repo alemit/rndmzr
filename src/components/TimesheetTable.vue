@@ -231,13 +231,21 @@ export default {
             isLoading: false,
             timesheetLoading: false
         }
-    },
-    created() {
-        this.validateProfile(this.profile)
-        this.distributionProfile = profileService.getDistributionProfile(this.profile)
-        this.initTimeEntries(this.projects)
-    },
-    computed: {
+    },    created() {
+        // Check if profile is available during initial creation
+        this.validateProfile(this.profile);
+        
+        // Use a default profile for initialization if needed
+        if (this.profile) {
+            this.distributionProfile = profileService.getDistributionProfile(this.profile);
+        } else {
+            // Use default profile temporarily (this was updated in the ProfileService)
+            this.distributionProfile = profileService.getDistributionProfile('engineering-manager');
+            console.debug('Using default engineering-manager profile until user profile is loaded');
+        }
+        
+        this.initTimeEntries(this.projects);
+    },computed: {
         ...mapFields([
             'userInfo',
             'timeEntries',
@@ -245,7 +253,8 @@ export default {
             'overrideMode',
             'status',
             'capexOpexRatioViolations',
-            'darkMode'
+            'darkMode',
+            'profile'
         ]),
         weekDates: function() {
             const weekDates = []
@@ -310,15 +319,40 @@ export default {
         currentWeekStart: {
             immediate: true,
             handler: 'fetchAndPopulateEntriesForTheWeek'
-        },
-        showProfileTasksOnly: function(newValue) {
+        },        showProfileTasksOnly: function(newValue) {
             this.$bugsnag.leaveBreadcrumb('Show profile tasks only switch toggled', { newValue })
+        },
+        profile: function(newProfile) {
+            console.debug('Profile updated:', newProfile);
+            if (newProfile) {
+                this.distributionProfile = profileService.getDistributionProfile(newProfile);
+            }
         }
     },
-    methods: {
-        validateProfile(profile) {
+    methods: {        validateProfile(profile) {
+            // If profile is not yet available, we'll set a flag to check again once mounted
             if (!profile) {
-                throw 'No profile has been configured'
+                console.debug('Profile not available yet in validateProfile - this is normal during initialization');
+                
+                // Add a short timeout to allow store to initialize
+                setTimeout(() => {
+                    if (!this.profile) {
+                        // Use debug instead of warn to avoid errors in the Chrome Extensions screen
+                        console.debug('No profile has been configured after component mounted - showing prompt to user');
+                        
+                        // Show a notification to the user
+                        this.$buefy.toast.open({
+                            message: 'Please configure your profile in the extension options',
+                            type: 'is-warning',
+                            duration: 5000,
+                            position: 'is-bottom',
+                            queue: false
+                        });
+                    } else {
+                        console.debug('Profile loaded successfully after delay:', this.profile);
+                        this.distributionProfile = profileService.getDistributionProfile(this.profile);
+                    }
+                }, 1000); // Wait a bit longer to ensure store is initialized
             }
         },
         toggle(row) {

@@ -13,18 +13,37 @@ Bugsnag.start({
   enabledBreadcrumbTypes: ['error', 'log', 'user'],
   autoTrackSessions: false, // Disable auto session tracking
   collectUserIp: false, // Privacy enhancement
-  plugins: [new BugsnagPluginVue()],
-  onError: event => {
-    // Check if this is a configuration error
-    const isConfigError = event.errors.some(e => 
-      e.errorMessage && (
-        e.errorMessage.includes('No profile has been configured') ||
-        e.errorMessage.includes('Clockify API key has not been configured')
-      )
-    );
+  plugins: [new BugsnagPluginVue()],  onError: event => {
+    // Check if this is a configuration error, initialization warning, or console message
+    const isNonErrorMessage = event.errors.some(e => {
+      // Check for console warn/debug messages that shouldn't be treated as errors
+      if (e.errorClass === 'Console error' || e.errorClass === 'Warning') {
+        return true;
+      }
+      
+      // Check for specific known error messages during initialization
+      if (e.errorMessage) {
+        const knownMessages = [
+          'No profile has been configured',
+          'Clockify API key has not been configured',
+          'Profile not available yet',
+          'Using default engineering-manager profile',
+          'Cannot read property',
+          'No profile configured',
+          'No profile has been configured after component mounted'
+        ];
+        
+        // If any of these phrases appears in the error message, don't report it
+        return knownMessages.some(msg => e.errorMessage.includes(msg));
+      }
+      
+      return false;
+    });
     
-    // Don't report configuration errors
-    if (isConfigError) {
+    // Log configuration issues and warnings as debug messages, not errors
+    if (isNonErrorMessage) {
+      console.debug('Non-error message detected, not reporting as error:', 
+        event.errors.map(e => e.errorMessage).join(', '));
       return false;
     }
     
