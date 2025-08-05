@@ -27,12 +27,40 @@ Built with:
 1. rndmz 😎
 
 ## Development
-1. `git clone https://github.com/marchev/rndmzr.git && cd rndmzr`
-2. `yarn serve`
-3. In Chrome navigate to Extensions
-4. Enable **Developer Mode**
-5. Clock **Load unpacked** and point to the `rndmzr/dist` directory
-6. Code and have fun 👻
+
+### Development Mode (Live Changes)
+```bash
+npm run dev
+```
+
+### Production Build
+```bash
+npm run build
+```
+
+### Vue.js Only Build (Advanced)
+```bash
+npm run build:vue
+```
+*Builds Vue.js files only, without Chrome extension fixes*
+
+### Load in Chrome
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked" → select `dist` folder
+
+### Develop
+- Edit Vue components → Auto-updates
+- Edit service worker → Reload extension in Chrome
+
+### Debug Tools
+In extension console (F12):
+```javascript
+window.debugStorage.dump()   // Show all storage
+window.debugStorage.clear()  // Clear storage
+```
+
+**Works on Windows (Git Bash) and macOS.** 🚀
 
 ## Contribute
 Any contribution is more than welcomed. If you find a issue, have an idea of a great feature or simply want to make a pull request - go for it! Here is a kanban board with all project issues:

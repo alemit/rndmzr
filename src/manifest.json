@@ -37,7 +37,6 @@
     "browser_style": true
   },  "web_accessible_resources": [{
     "resources": ["icons/*.png", "assets/*", "index.html", "options.html", "js/*.js"],
-    "matches": ["<all_urls>"]
-  }],
-  "version": "0.5.4"
+    "matches": ["<all_urls>"]  }],
+  "version": "0.5.5"
 }
