@@ -2,10 +2,10 @@
   "name": "rndmzr",
   "version": "0.5.5",
   "private": true,  "scripts": {
-    "serve": "vue-cli-service build --mode development --watch",
     "dev": "bash dev.sh",
     "build": "bash build.sh",
-    "build:vue": "vue-cli-service build --skip-plugins @vue/cli-plugin-eslint",
+    "build:vue-only": "vue-cli-service build --skip-plugins @vue/cli-plugin-eslint",
+    "build:vue-watch": "vue-cli-service build --mode development --watch",
     "test:unit": "vue-cli-service test:unit",
     "lint": "vue-cli-service lint"
   },

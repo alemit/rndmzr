@@ -28,21 +28,35 @@ Built with:
 
 ## Development
 
-### Development Mode (Live Changes)
+### Development Mode (Live Changes) ✅ RECOMMENDED
 ```bash
-npm run dev
+yarn dev
 ```
+*Complete Chrome extension development with live reloading*
 
-### Production Build
+### Production Build ✅ RECOMMENDED  
 ```bash
-npm run build
+yarn build
 ```
+*Complete Chrome extension production build*
 
-### Vue.js Only Build (Advanced)
+### Advanced Options (Vue.js Only)
+⚠️ **Warning**: These commands build Vue.js files only, without Chrome extension fixes. The extension will NOT work in Chrome without additional setup.
+
 ```bash
-npm run build:vue
+yarn build:vue-only
 ```
-*Builds Vue.js files only, without Chrome extension fixes*
+*Vue.js production build only (missing Chrome extension fixes)*
+
+```bash
+yarn build:vue-watch
+```
+*Vue.js development build with file watching (missing Chrome extension fixes)*
+
+### What's Missing from Vue-Only Builds?
+- Clean `background.js` (gets wrong webpack version)
+- Mock files (`panelbear.js`, `storage-debug.js`)
+- Chrome extension will fail to load
 
 ### Load in Chrome
 1. Open `chrome://extensions/`
@@ -50,7 +64,7 @@ npm run build:vue
 3. Click "Load unpacked" → select `dist` folder
 
 ### Develop
-- Edit Vue components → Auto-updates
+- Edit Vue components → Auto-updates (via yarn build:vue-watch)
 - Edit service worker → Reload extension in Chrome
 
 ### Debug Tools

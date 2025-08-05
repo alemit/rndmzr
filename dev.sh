@@ -2,24 +2,29 @@
 
 # Universal Chrome Extension Development Script
 # Works on Windows (Git Bash) and macOS
+# 
+# ⚠️  IMPORTANT: Don't run 'yarn build:vue-watch' directly!
+#     That only builds Vue.js files without Chrome extension fixes.
+#     Always use 'yarn dev' for development.
+#
 echo "🚀 Starting Chrome Extension Development"
 
 # Clean previous build
 rm -rf dist/
 
-# Start yarn serve in background
+# Start yarn build:vue-watch in background
 echo "📦 Starting development server..."
-yarn serve &
+yarn build:vue-watch &
 SERVE_PID=$!
 
 # Wait for initial build and ensure dist directory exists
 echo "⏳ Building extension..."
 WAIT_COUNT=0
-while [ ! -d "dist" ] || [ ! -f "dist/js/background.js" ]; do
+while [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; do
     sleep 2
     WAIT_COUNT=$((WAIT_COUNT + 1))
     if [ $WAIT_COUNT -gt 30 ]; then
-        echo "❌ Build timeout - please check yarn serve output"
+        echo "❌ Build timeout - please check yarn build:vue-watch output"
         exit 1
     fi
 done

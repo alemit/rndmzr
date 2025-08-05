@@ -1,11 +1,16 @@
 #!/bin/bash
 
 # Production build script for Chrome extension
+# 
+# ⚠️  IMPORTANT: Don't run 'yarn build:vue-only' directly!
+#     That only builds Vue.js files without Chrome extension fixes.
+#     Always use 'yarn build' for production.
+#
 echo "🏗️ Building Chrome Extension for Production"
 
 # Build the project
 echo "📦 Running production build..."
-npm run build
+yarn build:vue-only
 
 # Apply Chrome extension fixes
 echo "🔧 Applying Chrome extension fixes..."
